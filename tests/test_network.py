@@ -113,7 +113,7 @@ class NetworkTests(unittest.TestCase):
         ]) as port:
             result = run(
                 CLI, "--prompt", "127.0.0.1", str(port),
-                input='\n*CLS\nDISP:TEXT "why?"\nVALUE?\nexit\n',
+                input='\n*CLS\nDISP:TEXT "why?"\nVALUE?\n.exit\n',
             )
             self.assert_success(result)
             self.assertIn("42\n", result.stdout)

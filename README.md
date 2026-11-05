@@ -49,7 +49,9 @@ Linux/macOS with a single-configuration generator:
 Calling the CLI without arguments displays help. Unsupported arguments fail
 with a nonzero exit code and an error on stderr. With an IP address, the CLI
 connects (default port 5025), prints the `*IDN?` response, and disconnects.
-`--prompt` keeps the connection open for commands; `exit`, `quit`, or EOF exits.
+`--prompt` keeps the connection open for commands; `.exit`, `exit`, `quit`, or
+EOF exits. On an interactive terminal, use the up and down arrow keys to browse
+commands entered during the current session.
 Queries containing `?` outside quoted strings print one response line.
 Other commands are sent without waiting for a response.
 

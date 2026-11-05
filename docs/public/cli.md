@@ -41,13 +41,15 @@ IDN query it enters a `vna> ` prompt. Enter single-line SCPI commands:
 vna> *CLS
 vna> SYST:ERR?
 0,"No error"
-vna> exit
+vna> .exit
 ```
 
 Commands containing `?` outside single- or double-quoted strings are queries:
 the CLI prints one LF-terminated response line. Other commands are sent
 without waiting for a response, since SCPI setters normally return nothing.
-Empty lines are ignored. `exit`, `quit`, or EOF closes the connection.
+Empty lines are ignored. The up and down arrow keys browse commands entered
+during the current interactive session. `.exit`, `exit`, `quit`, or EOF closes
+the connection.
 Binary block and multiline responses are not supported.
 
 Each connect, write, and response-read stage has a 5-second timeout.

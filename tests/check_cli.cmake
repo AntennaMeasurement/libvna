@@ -1,4 +1,4 @@
-set(usage "Usage: vna [--help | --version]\n       vna <ip> [port] [--prompt]\n\nConnect over TCP, print the *IDN? response, then exit.\n\nOptions:\n  -h, --help     Show this help message.\n  -v, --version  Show the library version.\n  --prompt       Enter interactive mode after *IDN? (exit/quit to leave).\n\nThe default port is 5025. IP must be a numeric IPv4 or IPv6 address.\n")
+set(usage "Usage: vna [--help | --version]\n       vna <ip> [port] [--prompt]\n\nConnect over TCP, print the *IDN? response, then exit.\n\nOptions:\n  -h, --help     Show this help message.\n  -v, --version  Show the library version.\n  --prompt       Enter interactive mode after *IDN? (.exit/exit/quit to leave).\n\nThe default port is 5025. IP must be a numeric IPv4 or IPv6 address.\n")
 
 function(check_cli expected_status expected_stdout expected_stderr)
     execute_process(
