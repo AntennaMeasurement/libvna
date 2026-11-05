@@ -1,4 +1,4 @@
-set(usage "Usage: vna [--help | --version]\n       vna <ip> [port] [--prompt | --command <command>]\n\nConnect over TCP, print the *IDN? response, then exit.\n\nOptions:\n  -h, --help     Show this help message.\n  -v, --version  Show the library version.\n  --prompt       Enter interactive mode after *IDN? (.exit/exit/quit to leave).\n  --command <command>\n                 Send one SCPI command after *IDN?, then exit.\n\nThe default port is 5025. IP must be a numeric IPv4 or IPv6 address.\n")
+set(usage "Usage: vna [--help | --version]\n       vna <ip> [port] [--prompt | --command <command> | --file <file_path>]\n\nConnect over TCP; by default, print the *IDN? response, then exit.\n\nOptions:\n  -h, --help     Show this help message.\n  -v, --version  Show the library version.\n  --prompt       Enter interactive mode after *IDN? (.exit/exit/quit to leave).\n  --command <command>\n                 Send one SCPI command without an automatic *IDN?, then exit.\n  --file <file_path>\n                 Run SCPI commands from a file, waiting with *OPC? after each.\n\nThe default port is 5025. IP must be a numeric IPv4 or IPv6 address.\n")
 
 function(check_cli expected_status expected_stdout expected_stderr)
     execute_process(
@@ -36,3 +36,10 @@ check_cli(1 "" "Error: unsupported arguments.\n${usage}" 127.0.0.1 5x)
 check_cli(1 "" "Error: unsupported arguments.\n${usage}" 127.0.0.1 --prompt --prompt)
 check_cli(1 "" "Error: unsupported arguments.\n${usage}" 127.0.0.1 --command "*CLS" --command "*RST")
 check_cli(1 "" "Error: unsupported arguments.\n${usage}" 127.0.0.1 --prompt --command "*CLS")
+check_cli(1 "" "Error: unsupported arguments.\n${usage}" --file)
+check_cli(1 "" "Error: unsupported arguments.\n${usage}" --file commands.scpi)
+check_cli(1 "" "Error: unsupported arguments.\n${usage}" 127.0.0.1 --file)
+check_cli(1 "" "Error: unsupported arguments.\n${usage}" 127.0.0.1 --file "")
+check_cli(1 "" "Error: unsupported arguments.\n${usage}" 127.0.0.1 --file a --file b)
+check_cli(1 "" "Error: unsupported arguments.\n${usage}" 127.0.0.1 --file a --prompt)
+check_cli(1 "" "Error: unsupported arguments.\n${usage}" 127.0.0.1 --command "*CLS" --file a)

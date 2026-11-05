@@ -36,6 +36,7 @@ Windows with Visual Studio's generator:
 .\build\Release\vna.exe 192.168.1.100
 .\build\Release\vna.exe 192.168.1.100 5025 --prompt
 .\build\Release\vna.exe 192.168.1.100 --command "SYST:ERR?"
+.\build\Release\vna.exe 192.168.1.100 --file "commands.scpi"
 ```
 
 Linux/macOS with a single-configuration generator:
@@ -46,18 +47,28 @@ Linux/macOS with a single-configuration generator:
 ./build/vna 192.168.1.100
 ./build/vna 192.168.1.100 5025 --prompt
 ./build/vna 192.168.1.100 --command "SYST:ERR?"
+./build/vna 192.168.1.100 --file "commands.scpi"
 ```
 
 Calling the CLI without arguments displays help. Unsupported arguments fail
-with a nonzero exit code and an error on stderr. With an IP address, the CLI
+with a nonzero exit code and an error on stderr. With only an IP address/port, the CLI
 connects (default port 5025), prints the `*IDN?` response, and disconnects.
 `--prompt` keeps the connection open for commands; `.exit`, `exit`, `quit`, or
 EOF exits. On an interactive terminal, use the up and down arrow keys to browse
 commands entered during the current session.
-`--command <command>` sends one SCPI command after the IDN query and then exits;
+`--command <command>` sends one SCPI command directly and then exits;
 queries print their response. It cannot be combined with `--prompt`.
 Queries containing `?` outside quoted strings print one response line.
 Other commands are sent without waiting for a response.
+`--file <file_path>` runs commands from a text file directly.
+Neither mode sends an automatic `*IDN?`; explicit `*IDN?` commands still work.
+Blank lines and `#` comment lines are skipped; `//` comments outside quoted
+strings are removed. After each command (including the last), the CLI waits
+for `*OPC?` to return `1` before continuing; internal completion responses
+are not printed. Failures stop execution with a nonzero exit code.
+The existing 5-second response timeout also applies to `*OPC?`.
+File mode cannot be combined with `--prompt` or `--command`.
+See the [CLI guide](docs/public/cli.md#command-files) for the file format.
 
 ### Options
 

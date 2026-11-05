@@ -1,3 +1,5 @@
+#include <ctype.h>
+#include <errno.h>
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -16,9 +18,9 @@
 static void print_usage(FILE *stream)
 {
     fputs("Usage: vna [--help | --version]\n"
-          "       vna <ip> [port] [--prompt | --command <command>]\n"
+          "       vna <ip> [port] [--prompt | --command <command> | --file <file_path>]\n"
           "\n"
-          "Connect over TCP, print the *IDN? response, then exit.\n"
+          "Connect over TCP; by default, print the *IDN? response, then exit.\n"
           "\n"
           "Options:\n"
           "  -h, --help     Show this help message.\n"
@@ -26,7 +28,9 @@ static void print_usage(FILE *stream)
           "  --prompt       Enter interactive mode after *IDN? "
           "(.exit/exit/quit to leave).\n"
           "  --command <command>\n"
-          "                 Send one SCPI command after *IDN?, then exit.\n"
+          "                 Send one SCPI command without an automatic *IDN?, then exit.\n"
+          "  --file <file_path>\n"
+          "                 Run SCPI commands from a file, waiting with *OPC? after each.\n"
           "\n"
           "The default port is 5025. IP must be a numeric IPv4 or IPv6 address.\n",
           stream);
@@ -119,6 +123,120 @@ static int ensure_line_capacity(char **line, size_t *capacity, size_t needed)
     *line = grown;
     *capacity = next;
     return 1;
+}
+
+static char *file_command(char *line)
+{
+    char *end;
+    char quote = '\0';
+
+    while (isspace((unsigned char)*line))
+        ++line;
+    if (*line == '#')
+        *line = '\0';
+    for (end = line; *end != '\0'; ++end) {
+        if (quote != '\0') {
+            if (*end == quote) {
+                if (end[1] == quote)
+                    ++end;
+                else
+                    quote = '\0';
+            }
+        } else if (*end == '\'' || *end == '"') {
+            quote = *end;
+        } else if (*end == '/' && end[1] == '/') {
+            break;
+        }
+    }
+    while (end > line && isspace((unsigned char)end[-1]))
+        --end;
+    *end = '\0';
+    return line;
+}
+
+static int wait_for_completion(vna_connection *connection)
+{
+    char *response;
+    const char *value;
+    int complete;
+    vna_status status = vna_query(connection, "*OPC?", &response);
+
+    if (status != VNA_STATUS_SUCCESS) {
+        fprintf(stderr, "Error: *OPC? query failed: %s.\n",
+                vna_status_string(status));
+        return 0;
+    }
+    value = response;
+    while (isspace((unsigned char)*value))
+        ++value;
+    if (*value == '+')
+        ++value;
+    complete = *value == '1';
+    if (complete)
+        ++value;
+    while (isspace((unsigned char)*value))
+        ++value;
+    complete = complete && *value == '\0';
+    if (!complete)
+        fprintf(stderr, "Error: unexpected *OPC? response: %s.\n", response);
+    vna_free_response(response);
+    return complete;
+}
+
+static int execute_file(vna_connection *connection, FILE *file,
+                        const char *path)
+{
+    char *line = NULL;
+    size_t capacity = 0;
+    size_t line_number = 0;
+    int success = 1;
+
+    for (;;) {
+        size_t length = 0;
+        char *command;
+        int ch;
+
+        ++line_number;
+        while ((ch = fgetc(file)) != '\n' && ch != EOF) {
+            if (ch == '\0') {
+                fputs("Error: command file contains a NUL byte.\n", stderr);
+                success = 0;
+                goto done;
+            }
+            if (!ensure_line_capacity(&line, &capacity, length + 2)) {
+                fputs("Error: file line is too large or out of memory.\n",
+                      stderr);
+                success = 0;
+                goto done;
+            }
+            line[length++] = (char)ch;
+        }
+        if (ferror(file)) {
+            fputs("Error: could not read command file.\n", stderr);
+            success = 0;
+            break;
+        }
+        if (length == 0) {
+            if (ch == EOF)
+                break;
+            continue;
+        }
+        line[length] = '\0';
+        command = file_command(line);
+        if (*command == '\0')
+            continue;
+        if (!execute_command(connection, command) ||
+            !wait_for_completion(connection)) {
+            success = 0;
+            break;
+        }
+    }
+done:
+    if (!success)
+        fprintf(stderr, "Error: command file \"%s\", line %zu failed.\n",
+                path, line_number);
+    free(line);
+    return success;
 }
 
 static int save_history(command_history *history, const char *line)
@@ -404,6 +522,8 @@ int main(int argc, char *argv[])
 {
     const char *ip = NULL;
     const char *command = NULL;
+    const char *file_path = NULL;
+    FILE *file = NULL;
     unsigned int port = VNA_DEFAULT_PORT;
     int have_port = 0;
     int interactive = 0;
@@ -430,6 +550,9 @@ int main(int argc, char *argv[])
         } else if (strcmp(argv[i], "--command") == 0 && command == NULL &&
                    i + 1 < argc && argv[i + 1][0] != '\0') {
             command = argv[++i];
+        } else if (strcmp(argv[i], "--file") == 0 && file_path == NULL &&
+                   i + 1 < argc && argv[i + 1][0] != '\0') {
+            file_path = argv[++i];
         } else if (argv[i][0] == '-') {
             goto invalid_arguments;
         } else if (ip == NULL) {
@@ -440,19 +563,39 @@ int main(int argc, char *argv[])
             goto invalid_arguments;
         }
     }
-    if (ip == NULL || (interactive && command != NULL))
+    if (ip == NULL ||
+        interactive + (command != NULL) + (file_path != NULL) > 1)
         goto invalid_arguments;
+    if (file_path != NULL) {
+        file = fopen(file_path, "rb");
+        if (file == NULL) {
+            fprintf(stderr, "Error: could not open command file \"%s\": %s.\n",
+                    file_path, strerror(errno));
+            return EXIT_FAILURE;
+        }
+    }
     connection = vna_connect(ip, port, &status);
     if (connection == NULL) {
         fprintf(stderr, "Error: connection failed: %s.\n", vna_status_string(status));
-        return EXIT_FAILURE;
+        success = 0;
+        goto done;
     }
-    success = print_query(connection, "*IDN?");
-    if (success && interactive)
-        success = prompt(connection);
-    else if (success && command != NULL)
+    if (command != NULL)
         success = execute_command(connection, command);
+    else if (file != NULL)
+        success = execute_file(connection, file, file_path);
+    else {
+        success = print_query(connection, "*IDN?");
+        if (success && interactive)
+            success = prompt(connection);
+    }
     vna_disconnect(connection);
+done:
+    if (file != NULL && fclose(file) != 0) {
+        fprintf(stderr, "Error: could not close command file \"%s\": %s.\n",
+                file_path, strerror(errno));
+        success = 0;
+    }
     if (fflush(stdout) != 0 || ferror(stdout)) {
         fputs("Error: could not write standard output.\n", stderr);
         success = 0;

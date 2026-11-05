@@ -1,7 +1,9 @@
 import contextlib
+from pathlib import Path
 import socket
 import subprocess
 import sys
+import tempfile
 import threading
 import time
 import unittest
@@ -25,7 +27,7 @@ def instrument(exchanges, host="127.0.0.1", port=0):
             try:
                 with listener.accept()[0] as connection:
                     connection.settimeout(12)
-                    with connection.makefile("rb") as stream:
+                    with connection.makefile("rb", buffering=0) as stream:
                         for expected, chunks in exchanges:
                             actual = stream.readline()
                             if actual != expected:
@@ -34,6 +36,17 @@ def instrument(exchanges, host="127.0.0.1", port=0):
                                 # Wait for the client's timeout to close the socket.
                                 if stream.read(1) != b"":
                                     raise AssertionError("Expected client disconnect")
+                            elif chunks == "pending":
+                                connection.settimeout(0.1)
+                                try:
+                                    connection.recv(1)
+                                except socket.timeout:
+                                    pass
+                                else:
+                                    raise AssertionError("Client did not wait for *OPC?")
+                                finally:
+                                    connection.settimeout(12)
+                                connection.sendall(b"1\n")
                             else:
                                 for chunk in chunks:
                                     if chunk is None:
@@ -140,7 +153,6 @@ class NetworkTests(unittest.TestCase):
 
     def test_cli_command(self):
         with instrument([
-            (b"*IDN?\n", [IDN]),
             (b'DISP:TEXT "ready?"\n', []),
         ]) as port:
             result = run(
@@ -148,18 +160,132 @@ class NetworkTests(unittest.TestCase):
                 "--command", 'DISP:TEXT "ready?"',
             )
             self.assert_success(result)
-            self.assertEqual(result.stdout, IDN.decode().strip() + "\n")
+            self.assertEqual(result.stdout, "")
 
     def test_cli_command_query(self):
         with instrument([
-            (b"*IDN?\n", [IDN]),
             (b"VALUE?\n", [b"42\n"]),
         ]) as port:
             result = run(
                 CLI, "--command", "VALUE?", "127.0.0.1", str(port)
             )
             self.assert_success(result)
-            self.assertEqual(result.stdout, IDN.decode().strip() + "\n42\n")
+            self.assertEqual(result.stdout, "42\n")
+
+    def test_cli_command_explicit_idn(self):
+        with instrument([(b"*IDN?\n", [IDN])]) as port:
+            result = run(CLI, "127.0.0.1", str(port), "--command", "*IDN?")
+            self.assert_success(result)
+            self.assertEqual(result.stdout, IDN.decode().strip() + "\n")
+
+    def test_cli_file(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "commands with spaces.scpi"
+            path.write_bytes(
+                b"# Comment 1\r\n  # Comment 2\r\n\r\n \t\r\n"
+                b"*IDN?\r\nSYST:PRES  // Inline comment\r\n"
+                b"// Comment only\r\nCALC1:DATA? FDATA"
+            )
+            with instrument([
+                (b"*IDN?\n", [IDN]),
+                (b"*OPC?\n", "pending"),
+                (b"SYST:PRES\n", []),
+                (b"*OPC?\n", [b"1\r", b"\n"]),
+                (b"CALC1:DATA? FDATA\n", [b"1,2,3\n"]),
+                (b"*OPC?\n", [b" +1 \n"]),
+            ]) as port:
+                result = run(CLI, "--file", str(path), "127.0.0.1", str(port))
+            self.assert_success(result)
+            self.assertEqual(result.stdout, IDN.decode().strip() + "\n1,2,3\n")
+
+    def test_cli_file_quoted_comments_and_long_line(self):
+        commands = [
+            'DISP:TEXT "https://host/#path? ""//"" done"',
+            "DISP:TEXT 'it''s // a # test?'",
+            'DISP:TEXT "' + "x" * 10000 + '"',
+        ]
+        exchanges = []
+        for command in commands:
+            exchanges.extend([
+                ((command + "\n").encode(), []),
+                (b"*OPC?\n", [b"1\n"]),
+            ])
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "commands.scpi"
+            path.write_text(
+                "\n".join("\t" + command + " // comment" for command in commands),
+                encoding="utf-8",
+            )
+            with instrument(exchanges) as port:
+                result = run(CLI, "127.0.0.1", str(port), "--file", str(path))
+            self.assert_success(result)
+            self.assertEqual(result.stdout, "")
+
+    def test_cli_file_empty(self):
+        for content in (b"", b"\n # comment\n // comment\n \t"):
+            with self.subTest(content=content), tempfile.TemporaryDirectory() as directory:
+                path = Path(directory) / "empty.scpi"
+                path.write_bytes(content)
+                with instrument([]) as port:
+                    result = run(CLI, "127.0.0.1", str(port), "--file", str(path))
+                self.assert_success(result)
+                self.assertEqual(result.stdout, "")
+
+    def test_cli_file_missing(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "missing.scpi"
+            result = run(CLI, "127.0.0.1", "--file", str(path))
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("could not open command file", result.stderr)
+        self.assertEqual(result.stdout, "")
+
+    def test_cli_file_nul(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "invalid.scpi"
+            path.write_bytes(b"# comment\nBAD\0COMMAND\n*CLS\n")
+            with instrument([]) as port:
+                result = run(CLI, "127.0.0.1", str(port), "--file", str(path))
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("NUL byte", result.stderr)
+            self.assertIn("line 2 failed", result.stderr)
+
+    def test_cli_file_completion_failure(self):
+        for response in ([b"0\n"], [b"unexpected\n"], [b"11\n"],
+                         [None], "timeout"):
+            with self.subTest(response=response), tempfile.TemporaryDirectory() as directory:
+                path = Path(directory) / "commands.scpi"
+                path.write_bytes(b"# comment\n*CLS\nNEXT\n")
+                with instrument([
+                    (b"*CLS\n", []),
+                    (b"*OPC?\n", response),
+                ]) as port:
+                    result = run(CLI, "127.0.0.1", str(port), "--file", str(path))
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("*OPC?", result.stderr)
+                self.assertIn("line 2 failed", result.stderr)
+                self.assertEqual(result.stdout, "")
+
+    def test_cli_file_query_failure(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "commands.scpi"
+            path.write_bytes(b"VALUE?\nNEXT\n")
+            with instrument([
+                (b"VALUE?\n", [None]),
+            ]) as port:
+                result = run(CLI, "127.0.0.1", str(port), "--file", str(path))
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("query failed", result.stderr)
+            self.assertIn("line 1 failed", result.stderr)
+
+    def test_cli_file_explicit_idn_failure(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "commands.scpi"
+            path.write_bytes(b"*IDN?\n*CLS\n")
+            with instrument([(b"*IDN?\n", [None])]) as port:
+                result = run(CLI, "127.0.0.1", str(port), "--file", str(path))
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("query failed", result.stderr)
+            self.assertEqual(result.stdout, "")
 
     def test_cli_prompt_eof(self):
         with instrument([(b"*IDN?\n", [IDN]), (b"VALUE?\n", [b"42\n"])]) as port:

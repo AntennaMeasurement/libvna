@@ -1,0 +1,13 @@
+# Sample VNA Command Script File
+*IDN?                            // Get device info
+SYST:PRES                        // Preset 
+SENS1:FREQ:STAR 26.5 GHZ         // Sets start frequency
+SENS1:FREQ:STOP 40 GHZ           // Sets stop frequency
+SENS1:SWE:POIN 3                 // Sets number of sweep points
+CALC1:PAR:DEL:ALL                // Delete all defined measurements
+CALC1:PAR:DEF:EXT 'Test1','S21'  // Define a 'Test1' named 'S21' measurement  
+CALC1:PAR:SEL 'Test1'            // Select defined measurement
+CALC1:MEAS1:FORM MLOG            // Display and claculation format will be Log Magnitude    
+DISP:WIND1:TRAC1:FEED 'Test1'    // Set 'Test1' visible at Trace1
+CALC1:MEAS:X:VALUES?             // Fetch frequency data
+CALC1:DATA? FDATA                // Fetch measured data in displayed format  
