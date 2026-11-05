@@ -33,6 +33,7 @@ function(libvna_fetch_libuv)
     # libuv selects an alias using BUILD_SHARED_LIBS; keep its backend static
     # without changing the enclosing project's library selection.
     set(BUILD_SHARED_LIBS OFF)
+    set(BUILD_TESTING OFF)
     set(LIBUV_BUILD_SHARED OFF CACHE BOOL "" FORCE)
     set(LIBUV_BUILD_TESTS OFF CACHE BOOL "" FORCE)
     set(LIBUV_BUILD_BENCH OFF CACHE BOOL "" FORCE)
