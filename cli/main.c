@@ -16,7 +16,7 @@
 static void print_usage(FILE *stream)
 {
     fputs("Usage: vna [--help | --version]\n"
-          "       vna <ip> [port] [--prompt]\n"
+          "       vna <ip> [port] [--prompt | --command <command>]\n"
           "\n"
           "Connect over TCP, print the *IDN? response, then exit.\n"
           "\n"
@@ -25,6 +25,8 @@ static void print_usage(FILE *stream)
           "  -v, --version  Show the library version.\n"
           "  --prompt       Enter interactive mode after *IDN? "
           "(.exit/exit/quit to leave).\n"
+          "  --command <command>\n"
+          "                 Send one SCPI command after *IDN?, then exit.\n"
           "\n"
           "The default port is 5025. IP must be a numeric IPv4 or IPv6 address.\n",
           stream);
@@ -79,6 +81,19 @@ static int is_query(const char *command)
         }
     }
     return 0;
+}
+
+static int execute_command(vna_connection *connection, const char *command)
+{
+    vna_status status;
+
+    if (is_query(command))
+        return print_query(connection, command);
+    status = vna_send(connection, command);
+    if (status != VNA_STATUS_SUCCESS)
+        fprintf(stderr, "Error: command failed: %s.\n",
+                vna_status_string(status));
+    return status == VNA_STATUS_SUCCESS;
 }
 
 typedef struct {
@@ -368,15 +383,7 @@ static int prompt(vna_connection *connection)
             success = 0;
             break;
         }
-        if (is_query(line)) {
-            success = print_query(connection, line);
-        } else {
-            vna_status status = vna_send(connection, line);
-            success = status == VNA_STATUS_SUCCESS;
-            if (!success)
-                fprintf(stderr, "Error: command failed: %s.\n",
-                        vna_status_string(status));
-        }
+        success = execute_command(connection, line);
         if (!success)
             break;
     }
@@ -396,6 +403,7 @@ done:
 int main(int argc, char *argv[])
 {
     const char *ip = NULL;
+    const char *command = NULL;
     unsigned int port = VNA_DEFAULT_PORT;
     int have_port = 0;
     int interactive = 0;
@@ -419,6 +427,9 @@ int main(int argc, char *argv[])
     for (int i = 1; i < argc; ++i) {
         if (strcmp(argv[i], "--prompt") == 0 && !interactive) {
             interactive = 1;
+        } else if (strcmp(argv[i], "--command") == 0 && command == NULL &&
+                   i + 1 < argc && argv[i + 1][0] != '\0') {
+            command = argv[++i];
         } else if (argv[i][0] == '-') {
             goto invalid_arguments;
         } else if (ip == NULL) {
@@ -429,7 +440,7 @@ int main(int argc, char *argv[])
             goto invalid_arguments;
         }
     }
-    if (ip == NULL)
+    if (ip == NULL || (interactive && command != NULL))
         goto invalid_arguments;
     connection = vna_connect(ip, port, &status);
     if (connection == NULL) {
@@ -439,6 +450,8 @@ int main(int argc, char *argv[])
     success = print_query(connection, "*IDN?");
     if (success && interactive)
         success = prompt(connection);
+    else if (success && command != NULL)
+        success = execute_command(connection, command);
     vna_disconnect(connection);
     if (fflush(stdout) != 0 || ferror(stdout)) {
         fputs("Error: could not write standard output.\n", stderr);

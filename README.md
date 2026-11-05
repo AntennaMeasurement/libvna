@@ -35,6 +35,7 @@ Windows with Visual Studio's generator:
 .\build\Release\vna.exe --version
 .\build\Release\vna.exe 192.168.1.100
 .\build\Release\vna.exe 192.168.1.100 5025 --prompt
+.\build\Release\vna.exe 192.168.1.100 --command "SYST:ERR?"
 ```
 
 Linux/macOS with a single-configuration generator:
@@ -44,6 +45,7 @@ Linux/macOS with a single-configuration generator:
 ./build/vna --version
 ./build/vna 192.168.1.100
 ./build/vna 192.168.1.100 5025 --prompt
+./build/vna 192.168.1.100 --command "SYST:ERR?"
 ```
 
 Calling the CLI without arguments displays help. Unsupported arguments fail
@@ -52,6 +54,8 @@ connects (default port 5025), prints the `*IDN?` response, and disconnects.
 `--prompt` keeps the connection open for commands; `.exit`, `exit`, `quit`, or
 EOF exits. On an interactive terminal, use the up and down arrow keys to browse
 commands entered during the current session.
+`--command <command>` sends one SCPI command after the IDN query and then exits;
+queries print their response. It cannot be combined with `--prompt`.
 Queries containing `?` outside quoted strings print one response line.
 Other commands are sent without waiting for a response.
 

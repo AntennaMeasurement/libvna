@@ -7,6 +7,7 @@ On Windows with Visual Studio:
 .\build\Release\vna.exe --version
 .\build\Release\vna.exe 192.168.1.100
 .\build\Release\vna.exe 192.168.1.100 5025 --prompt
+.\build\Release\vna.exe 192.168.1.100 --command "SYST:ERR?"
 ```
 
 For a single-configuration Unix build:
@@ -16,6 +17,7 @@ For a single-configuration Unix build:
 ./build/vna --version
 ./build/vna 192.168.1.100
 ./build/vna 192.168.1.100 5025 --prompt
+./build/vna 192.168.1.100 --command "SYST:ERR?"
 ```
 
 No arguments, `--help`, and `-h` display help. `--version` and `-v` print
@@ -26,7 +28,7 @@ write an error and help to stderr and return a nonzero exit code.
 ## Connecting
 
 ```text
-vna <ip> [port] [--prompt]
+vna <ip> [port] [--prompt | --command <command>]
 ```
 
 The IP must be a numeric IPv4 or IPv6 address (no hostname or URL).
@@ -51,6 +53,11 @@ Empty lines are ignored. The up and down arrow keys browse commands entered
 during the current interactive session. `.exit`, `exit`, `quit`, or EOF closes
 the connection.
 Binary block and multiline responses are not supported.
+
+`--command <command>` sends one SCPI command after the IDN query and then
+exits. Queries print one LF-terminated response line; other commands are sent
+without waiting for a response. Quote the command argument when it contains
+spaces. This option cannot be combined with `--prompt`.
 
 Each connect, write, and response-read stage has a 5-second timeout.
 Network failures/timeouts report an error to stderr, disconnect, and exit

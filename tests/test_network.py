@@ -138,6 +138,29 @@ class NetworkTests(unittest.TestCase):
             self.assertIn("42\n", result.stdout)
             self.assertEqual(result.stdout.count("vna> "), 5)
 
+    def test_cli_command(self):
+        with instrument([
+            (b"*IDN?\n", [IDN]),
+            (b'DISP:TEXT "ready?"\n', []),
+        ]) as port:
+            result = run(
+                CLI, "127.0.0.1", str(port),
+                "--command", 'DISP:TEXT "ready?"',
+            )
+            self.assert_success(result)
+            self.assertEqual(result.stdout, IDN.decode().strip() + "\n")
+
+    def test_cli_command_query(self):
+        with instrument([
+            (b"*IDN?\n", [IDN]),
+            (b"VALUE?\n", [b"42\n"]),
+        ]) as port:
+            result = run(
+                CLI, "--command", "VALUE?", "127.0.0.1", str(port)
+            )
+            self.assert_success(result)
+            self.assertEqual(result.stdout, IDN.decode().strip() + "\n42\n")
+
     def test_cli_prompt_eof(self):
         with instrument([(b"*IDN?\n", [IDN]), (b"VALUE?\n", [b"42\n"])]) as port:
             result = run(
