@@ -1,4 +1,4 @@
-set(usage "Usage: vna [--help | --version]\n\nSCPI vector network analyzer client (project skeleton).\nTCP connections and SCPI commands are not implemented yet.\n\nOptions:\n  -h, --help     Show this help message.\n  -v, --version  Show the library version.\n")
+set(usage "Usage: vna [--help | --version]\n       vna <ip> [port] [--prompt]\n\nConnect over TCP, print the *IDN? response, then exit.\n\nOptions:\n  -h, --help     Show this help message.\n  -v, --version  Show the library version.\n  --prompt       Enter interactive mode after *IDN? (exit/quit to leave).\n\nThe default port is 5025. IP must be a numeric IPv4 or IPv6 address.\n")
 
 function(check_cli expected_status expected_stdout expected_stderr)
     execute_process(
@@ -27,3 +27,8 @@ check_cli(0 "libvna ${VERSION}\n" "" -v)
 check_cli(1 "" "Error: unsupported arguments.\n${usage}" --unknown)
 check_cli(1 "" "Error: unsupported arguments.\n${usage}" --version extra)
 check_cli(1 "" "Error: unsupported arguments.\n${usage}" --help extra)
+check_cli(1 "" "Error: unsupported arguments.\n${usage}" --prompt)
+check_cli(1 "" "Error: unsupported arguments.\n${usage}" 127.0.0.1 0)
+check_cli(1 "" "Error: unsupported arguments.\n${usage}" 127.0.0.1 65536)
+check_cli(1 "" "Error: unsupported arguments.\n${usage}" 127.0.0.1 5x)
+check_cli(1 "" "Error: unsupported arguments.\n${usage}" 127.0.0.1 --prompt --prompt)

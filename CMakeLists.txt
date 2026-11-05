@@ -49,7 +49,7 @@ set_target_properties(uv_a PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
 configure_file(src/version.h.in generated/libvna_version.h @ONLY)
 
-add_library(vna src/version.c)
+add_library(vna src/version.c src/connection.c)
 add_library(libvna::vna ALIAS vna)
 target_compile_features(vna PUBLIC c_std_11)
 set_target_properties(vna PROPERTIES

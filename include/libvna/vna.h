@@ -2,6 +2,7 @@
 #define LIBVNA_VNA_H
 
 #include <libvna/utility.h>
+#include <libvna/connection.h>
 
 #ifdef __cplusplus
 extern "C" {

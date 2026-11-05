@@ -25,8 +25,14 @@ extern "C" {
 typedef enum vna_status {
     VNA_STATUS_SUCCESS = 0,
     VNA_STATUS_INVALID_ARGUMENT,
-    VNA_STATUS_OUT_OF_RANGE
+    VNA_STATUS_OUT_OF_RANGE,
+    VNA_STATUS_NO_MEMORY,
+    VNA_STATUS_CONNECTION_ERROR,
+    VNA_STATUS_TIMEOUT,
+    VNA_STATUS_IO_ERROR
 } vna_status;
+
+LIBVNA_API const char *vna_status_string(vna_status status);
 
 #ifdef __cplusplus
 }

@@ -1,8 +1,8 @@
 # libvna
 
 A cross-platform C library and CLI for controlling vector network analyzers
-over TCP using SCPI. The project is currently a buildable skeleton; device
-connections, SCPI commands, queries, and measurement functions will be added
+over TCP using SCPI. Numeric IPv4/IPv6 connections, text commands, queries,
+and an interactive CLI are supported. Measurement-specific APIs will be added
 later.
 
 ## Requirements
@@ -33,6 +33,8 @@ Windows with Visual Studio's generator:
 ```powershell
 .\build\Release\vna.exe --help
 .\build\Release\vna.exe --version
+.\build\Release\vna.exe 192.168.1.100
+.\build\Release\vna.exe 192.168.1.100 5025 --prompt
 ```
 
 Linux/macOS with a single-configuration generator:
@@ -40,11 +42,16 @@ Linux/macOS with a single-configuration generator:
 ```sh
 ./build/vna --help
 ./build/vna --version
+./build/vna 192.168.1.100
+./build/vna 192.168.1.100 5025 --prompt
 ```
 
 Calling the CLI without arguments displays help. Unsupported arguments fail
-with a nonzero exit code and an error on stderr. No network operations are
-performed yet.
+with a nonzero exit code and an error on stderr. With an IP address, the CLI
+connects (default port 5025), prints the `*IDN?` response, and disconnects.
+`--prompt` keeps the connection open for commands; `exit`, `quit`, or EOF exits.
+Queries containing `?` outside quoted strings print one response line.
+Other commands are sent without waiting for a response.
 
 ### Options
 
@@ -57,6 +64,8 @@ performed yet.
 Tests now default to OFF, like libamcore. Existing build caches retain their
 previous setting; enable tests explicitly for development. Package tests
 also require a C++ compiler and verify relocated C and C++ consumers.
+Network tests with the CLI enabled require Python 3 (standard library only)
+and use loopback mock instruments, not physical hardware.
 
 For an offline build, provide an already extracted libuv 1.51.0 source tree:
 
@@ -81,19 +90,36 @@ target_link_libraries(my_application PRIVATE libvna::vna)
 #include <libvna/vna.h>
 
 const char *version = vna_version();
+
+vna_status status;
+vna_connection *device = vna_connect("192.168.1.100", 0, &status);
+if (device == NULL) {
+    /* Report vna_status_string(status) to the caller. */
+} else {
+    char *response;
+    status = vna_query(device, "*IDN?", &response);
+    if (status == VNA_STATUS_SUCCESS) {
+        /* Use response before releasing it. */
+        vna_free_response(response);
+    }
+    /* Report any failed query using vna_status_string(status). */
+    vna_disconnect(device);
+}
 ```
 
-The default library is static. Its only public function is `vna_version()`,
-which returns a static version string owned by the library. It does not expose
-connection or SCPI APIs yet. Both source-tree and installed CMake consumption
-are supported; see below.
+The default library is static. `vna_version()` returns a static version string.
+`vna_connect()` returns an opaque connection pointer, or `NULL` with a status
+code on failure; port `0` selects 5025. `vna_send()` sends a command and
+`vna_query()` returns an allocated text response. Connect, send, and response
+read stages each have a 5-second timeout. Calls on the same connection must
+not overlap. Both source-tree and installed CMake consumption are supported.
 
 ## Layout
 
 - `include/libvna/`: public C headers
 - `src/`: library implementation
 - `cli/`: command-line entry point
-- `tests/`: library version, libuv event-loop smoke test, and CLI checks
+- `tests/`: version, backend, TCP/SCPI, CLI, and installed-package checks
 - `cmake/`: installed CMake package configuration
 - `docs/`: MkDocs pages and version hook
 - `.github/workflows/`: cross-platform build, test and release packaging
@@ -130,8 +156,8 @@ automatically. Shared consumers on Windows need the installed `bin` directory
 on `PATH`.
 
 `VERSION` is the single version source. Public symbol visibility and the
-`vna_status` conventions live in `include/libvna/utility.h`; no connection
-or measurement APIs have been introduced.
+`vna_status` conventions live in `include/libvna/utility.h`; connection APIs
+live in `include/libvna/connection.h` and are included by the umbrella header.
 
 ## Documentation and releases
 

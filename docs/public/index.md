@@ -3,8 +3,9 @@
 Version: **{{ libvna_version }}**
 
 libvna is a cross-platform C library and CLI for controlling vector network
-analyzers over TCP using SCPI. It is currently a buildable skeleton: connection,
-SCPI and measurement APIs are not implemented.
+analyzers over TCP using SCPI. Numeric IPv4/IPv6 connections, text commands,
+queries, and an interactive CLI are supported. Measurement-specific APIs
+are not implemented yet.
 
 The project separates public headers, library implementation, CLI and tests.
 The CLI depends on the library, not the other way around. The libuv backend is

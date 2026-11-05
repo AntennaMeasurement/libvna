@@ -12,5 +12,14 @@ int main(void)
         fputs("Unexpected installed library version.\n", stderr);
         return EXIT_FAILURE;
     }
+    vna_status status;
+    if (vna_connect(NULL, VNA_DEFAULT_PORT, &status) != NULL ||
+        status != VNA_STATUS_INVALID_ARGUMENT ||
+        strcmp(vna_status_string(status), "Invalid argument") != 0) {
+        fputs("Unexpected installed connection API behavior.\n", stderr);
+        return EXIT_FAILURE;
+    }
+    vna_disconnect(NULL);
+    vna_free_response(NULL);
     return EXIT_SUCCESS;
 }
