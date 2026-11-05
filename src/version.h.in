@@ -1,0 +1,6 @@
+#ifndef LIBVNA_VERSION_H
+#define LIBVNA_VERSION_H
+
+#define LIBVNA_VERSION "@PROJECT_VERSION@"
+
+#endif
