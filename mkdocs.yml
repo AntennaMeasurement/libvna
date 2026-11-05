@@ -1,0 +1,19 @@
+site_name: libvna
+site_description: Cross-platform C library for SCPI vector network analyzers
+site_url: https://antennameasurement.github.io/libvna/
+repo_url: https://github.com/AntennaMeasurement/libvna
+repo_name: AntennaMeasurement/libvna
+
+docs_dir: docs/public
+hooks:
+  - docs/hooks.py
+theme:
+  name: readthedocs
+nav:
+  - Overview: index.md
+  - Build and install: getting-started.md
+  - C API: api.md
+  - Command-line interface: cli.md
+  - CMake integration: cmake-integration.md
+  - Releases: releases.md
+strict: true

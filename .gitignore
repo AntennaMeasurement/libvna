@@ -2,3 +2,6 @@
 /build-*/
 /.vs/
 /CMakeUserPresets.json
+/site/
+/.venv-docs/
+__pycache__/
