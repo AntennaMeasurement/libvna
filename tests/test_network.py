@@ -87,6 +87,25 @@ class NetworkTests(unittest.TestCase):
         ]) as port:
             self.assert_success(run(API, "127.0.0.1", str(port), "buffered"))
 
+    def test_api_binary_block(self):
+        payload = b"\x00\n\xffabc"
+        with instrument([
+            (b"*IDN?\n", [IDN]),
+            (b'MMEM:DATA? "C:\\screen.png"\n',
+             [b"#", b"1", b"6", payload[:2], payload[2:], b"\r", b"\n"]),
+            (b"VALUE?\n", [b"42\n"]),
+        ]) as port:
+            self.assert_success(run(API, "127.0.0.1", str(port), "block"))
+
+    def test_api_binary_block_rejects_indefinite_length(self):
+        with instrument([
+            (b"*IDN?\n", [IDN]),
+            (b"DATA?\n", [b"#0"]),
+        ]) as port:
+            self.assert_success(
+                run(API, "127.0.0.1", str(port), "invalid-block")
+            )
+
     def test_api_eof(self):
         with instrument([(b"*IDN?\n", [b"incomplete", None])]) as port:
             self.assert_success(run(API, "127.0.0.1", str(port), "eof"))

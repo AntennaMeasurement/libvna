@@ -1,6 +1,8 @@
 #ifndef LIBVNA_CONNECTION_H
 #define LIBVNA_CONNECTION_H
 
+#include <stddef.h>
+
 #include <libvna/utility.h>
 
 #ifdef __cplusplus
@@ -26,6 +28,13 @@ LIBVNA_API vna_status vna_send(vna_connection *connection, const char *command);
 LIBVNA_API vna_status vna_query(vna_connection *connection, const char *command,
                               char **response);
 LIBVNA_API void vna_free_response(char *response);
+
+/* Reads an IEEE 488.2 definite-length binary block ending in LF or CRLF.
+ * On success, release *data with vna_free_data. */
+LIBVNA_API vna_status vna_query_block(vna_connection *connection,
+                                    const char *command,
+                                    unsigned char **data, size_t *length);
+LIBVNA_API void vna_free_data(void *data);
 
 #ifdef __cplusplus
 }

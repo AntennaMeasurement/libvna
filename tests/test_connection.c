@@ -17,6 +17,8 @@ int main(int argc, char **argv)
     vna_connection *connection;
     char sentinel;
     char *response = &sentinel;
+    unsigned char *data = (unsigned char *)&sentinel;
+    size_t data_length = 123;
     unsigned int port;
 
     CHECK(vna_connect(NULL, 0, &status) == NULL);
@@ -29,9 +31,18 @@ int main(int argc, char **argv)
     CHECK(status == VNA_STATUS_OUT_OF_RANGE);
     CHECK(vna_query(NULL, "*IDN?", &response) == VNA_STATUS_INVALID_ARGUMENT);
     CHECK(response == &sentinel);
+    CHECK(vna_query_block(NULL, "DATA?", &data, &data_length) ==
+          VNA_STATUS_INVALID_ARGUMENT);
+    CHECK(data == (unsigned char *)&sentinel);
+    CHECK(data_length == 123);
+    CHECK(vna_query_block(NULL, "DATA?", NULL, &data_length) ==
+          VNA_STATUS_INVALID_ARGUMENT);
+    CHECK(vna_query_block(NULL, "DATA?", &data, NULL) ==
+          VNA_STATUS_INVALID_ARGUMENT);
     CHECK(vna_send(NULL, "*CLS") == VNA_STATUS_INVALID_ARGUMENT);
     vna_disconnect(NULL);
     vna_free_response(NULL);
+    vna_free_data(NULL);
     if (argc == 1)
         return EXIT_SUCCESS;
     CHECK(argc == 4);
@@ -60,6 +71,26 @@ int main(int argc, char **argv)
         CHECK(vna_query(connection, "VALUE?", &response) == VNA_STATUS_SUCCESS);
         CHECK(strcmp(response, "second") == 0);
         vna_free_response(response);
+    } else if (strcmp(argv[3], "block") == 0) {
+        static const unsigned char expected[] = { 0, '\n', 0xff, 'a', 'b', 'c' };
+        CHECK(status == VNA_STATUS_SUCCESS);
+        vna_free_response(response);
+        CHECK(vna_query_block(connection, "MMEM:DATA? \"C:\\screen.png\"",
+                              &data, &data_length) == VNA_STATUS_SUCCESS);
+        CHECK(data_length == sizeof(expected));
+        CHECK(memcmp(data, expected, sizeof(expected)) == 0);
+        vna_free_data(data);
+        CHECK(vna_query(connection, "VALUE?", &response) == VNA_STATUS_SUCCESS);
+        CHECK(strcmp(response, "42") == 0);
+        vna_free_response(response);
+    } else if (strcmp(argv[3], "invalid-block") == 0) {
+        CHECK(status == VNA_STATUS_SUCCESS);
+        vna_free_response(response);
+        CHECK(vna_query_block(connection, "DATA?", &data, &data_length) ==
+              VNA_STATUS_IO_ERROR);
+        CHECK(data == (unsigned char *)&sentinel);
+        CHECK(data_length == 123);
+        CHECK(vna_query(connection, "VALUE?", &response) == VNA_STATUS_IO_ERROR);
     } else {
         CHECK(status == (strcmp(argv[3], "timeout") == 0 ?
                          VNA_STATUS_TIMEOUT : VNA_STATUS_IO_ERROR));

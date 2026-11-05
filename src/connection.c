@@ -21,6 +21,8 @@ struct vna_connection {
     char *buffer;
     size_t length;
     size_t capacity;
+    size_t read_target;
+    int read_to_newline;
 };
 
 const char *vna_status_string(vna_status status)
@@ -227,10 +229,31 @@ static void received(uv_stream_t *stream, ssize_t count, const uv_buf_t *buffer)
         }
         memcpy(connection->buffer + connection->length, buffer->base, (size_t)count);
         connection->length = needed;
-        if (memchr(connection->buffer, '\n', connection->length) != NULL)
+        if ((connection->read_to_newline &&
+             memchr(connection->buffer, '\n', connection->length) != NULL) ||
+            (!connection->read_to_newline &&
+             connection->length >= connection->read_target))
             finish(connection, VNA_STATUS_SUCCESS);
     }
     free(buffer->base);
+}
+
+static vna_status read_response(vna_connection *connection, size_t target,
+                                int to_newline)
+{
+    int ready = to_newline ?
+        memchr(connection->buffer, '\n', connection->length) != NULL :
+        connection->length >= target;
+    if (ready)
+        return VNA_STATUS_SUCCESS;
+
+    connection->read_target = target;
+    connection->read_to_newline = to_newline;
+    begin(connection);
+    if (uv_read_start((uv_stream_t *)&connection->tcp,
+                      allocate_read, received) != 0)
+        finish(connection, VNA_STATUS_IO_ERROR);
+    return wait_for_operation(connection);
 }
 
 vna_status vna_query(vna_connection *connection, const char *command, char **response)
@@ -249,11 +272,7 @@ vna_status vna_query(vna_connection *connection, const char *command, char **res
     newline = connection->length == 0 ? NULL :
         memchr(connection->buffer, '\n', connection->length);
     if (newline == NULL) {
-        begin(connection);
-        if (uv_read_start((uv_stream_t *)&connection->tcp,
-                          allocate_read, received) != 0)
-            finish(connection, VNA_STATUS_IO_ERROR);
-        status = wait_for_operation(connection);
+        status = read_response(connection, 0, 1);
         if (status != VNA_STATUS_SUCCESS)
             return status;
         newline = memchr(connection->buffer, '\n', connection->length);
@@ -275,7 +294,101 @@ vna_status vna_query(vna_connection *connection, const char *command, char **res
     return VNA_STATUS_SUCCESS;
 }
 
+vna_status vna_query_block(vna_connection *connection, const char *command,
+                           unsigned char **data, size_t *length)
+{
+    vna_status status;
+    size_t header_length;
+    size_t payload_length = 0;
+    size_t payload_end;
+    size_t consumed;
+    unsigned int length_digits;
+    unsigned char *payload;
+
+    if (data == NULL || length == NULL)
+        return VNA_STATUS_INVALID_ARGUMENT;
+    status = vna_send(connection, command);
+    if (status != VNA_STATUS_SUCCESS)
+        return status;
+
+    status = read_response(connection, 2, 0);
+    if (status != VNA_STATUS_SUCCESS)
+        return status;
+    if (connection->buffer[0] != '#' ||
+        connection->buffer[1] < '1' || connection->buffer[1] > '9') {
+        finish(connection, VNA_STATUS_IO_ERROR);
+        return VNA_STATUS_IO_ERROR;
+    }
+    length_digits = (unsigned int)(connection->buffer[1] - '0');
+    header_length = (size_t)length_digits + 2;
+    status = read_response(connection, header_length, 0);
+    if (status != VNA_STATUS_SUCCESS)
+        return status;
+    for (size_t i = 2; i < header_length; ++i) {
+        unsigned int digit;
+        if (connection->buffer[i] < '0' || connection->buffer[i] > '9') {
+            finish(connection, VNA_STATUS_IO_ERROR);
+            return VNA_STATUS_IO_ERROR;
+        }
+        digit = (unsigned int)(connection->buffer[i] - '0');
+        if (payload_length > (SIZE_MAX - digit) / 10) {
+            finish(connection, VNA_STATUS_OUT_OF_RANGE);
+            return VNA_STATUS_OUT_OF_RANGE;
+        }
+        payload_length = payload_length * 10 + digit;
+    }
+    if (payload_length > SIZE_MAX - header_length) {
+        finish(connection, VNA_STATUS_OUT_OF_RANGE);
+        return VNA_STATUS_OUT_OF_RANGE;
+    }
+    payload_end = header_length + payload_length;
+    if (payload_end == SIZE_MAX) {
+        finish(connection, VNA_STATUS_OUT_OF_RANGE);
+        return VNA_STATUS_OUT_OF_RANGE;
+    }
+    status = read_response(connection, payload_end + 1, 0);
+    if (status != VNA_STATUS_SUCCESS)
+        return status;
+    if (connection->buffer[payload_end] == '\r') {
+        if (payload_end > SIZE_MAX - 2) {
+            finish(connection, VNA_STATUS_OUT_OF_RANGE);
+            return VNA_STATUS_OUT_OF_RANGE;
+        }
+        status = read_response(connection, payload_end + 2, 0);
+        if (status != VNA_STATUS_SUCCESS)
+            return status;
+        if (connection->buffer[payload_end + 1] != '\n') {
+            finish(connection, VNA_STATUS_IO_ERROR);
+            return VNA_STATUS_IO_ERROR;
+        }
+        consumed = payload_end + 2;
+    } else if (connection->buffer[payload_end] == '\n') {
+        consumed = payload_end + 1;
+    } else {
+        finish(connection, VNA_STATUS_IO_ERROR);
+        return VNA_STATUS_IO_ERROR;
+    }
+
+    payload = payload_length == 0 ? NULL : malloc(payload_length);
+    if (payload_length != 0 && payload == NULL) {
+        finish(connection, VNA_STATUS_NO_MEMORY);
+        return VNA_STATUS_NO_MEMORY;
+    }
+    if (payload_length != 0)
+        memcpy(payload, connection->buffer + header_length, payload_length);
+    connection->length -= consumed;
+    memmove(connection->buffer, connection->buffer + consumed, connection->length);
+    *data = payload;
+    *length = payload_length;
+    return VNA_STATUS_SUCCESS;
+}
+
 void vna_free_response(char *response)
 {
     free(response);
+}
+
+void vna_free_data(void *data)
+{
+    free(data);
 }

@@ -28,7 +28,7 @@ callers and does not expose libuv headers.
 `vna_status_string(status)` returns a static, library-owned description.
 Status-returning APIs leave output parameters unchanged on error.
 
-## TCP connection and SCPI text I/O
+## TCP connection and SCPI I/O
 
 These APIs are declared in `libvna/connection.h`, also included by `vna.h`.
 
@@ -38,6 +38,9 @@ void vna_disconnect(vna_connection *connection);
 vna_status vna_send(vna_connection *connection, const char *command);
 vna_status vna_query(vna_connection *connection, const char *command, char **response);
 void vna_free_response(char *response);
+vna_status vna_query_block(vna_connection *connection, const char *command,
+                           unsigned char **data, size_t *length);
+void vna_free_data(void *data);
 ```
 
 `vna_connect()` synchronously connects to a numeric IPv4/IPv6 address and
@@ -62,6 +65,37 @@ a response makes the connection unusable, preventing reuse of a partially
 consumed stream. Disconnect it and establish a new connection. Invalid input
 and command-allocation failures before transmission leave the connection
 usable.
+
+`vna_query_block()` sends a query and reads an IEEE 488.2 definite-length
+binary block (`#<digit-count><byte-count><payload>`) followed by LF or CRLF.
+It returns the exact payload bytes and length; binary data may contain any
+byte value, including NUL and LF. The block length header must use 1–9 digits;
+indefinite-length blocks are not supported. Release the payload with
+`vna_free_data()`. The response-read timeout applies while receiving the
+header, payload, and line terminator. Malformed or incomplete responses make
+the connection unusable, as with failed text queries.
+
+For example, to retrieve a VNA screen image saved on the instrument:
+
+```c
+unsigned char *image;
+size_t image_length;
+status = vna_query_block(device, "MMEM:DATA? \"C:\\screen.png\"",
+                         &image, &image_length);
+if (status == VNA_STATUS_SUCCESS) {
+    FILE *file = fopen("screen.png", "wb");
+    if (file == NULL || fwrite(image, 1, image_length, file) != image_length) {
+        /* Report the local file write failure. */
+    }
+    if (file != NULL)
+        fclose(file);
+    vna_free_data(image);
+}
+```
+
+The example also requires `<stdio.h>`. Check the status and local file
+operations in production code; instrument-specific file paths and image-save
+commands may vary.
 
 Always release a successful connection with `vna_disconnect()`.
 `vna_disconnect(NULL)` and `vna_free_response(NULL)` are safe. Do not use a
