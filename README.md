@@ -179,7 +179,7 @@ live in `include/libvnascpi/connection.h` and are included by the umbrella heade
 ## Documentation and releases
 
 ```sh
-python -m pip install -r requirements-docs.txt
+python -m pip install -r docs/requirements.txt
 python -m mkdocs build --strict
 python -m mkdocs serve
 ```
