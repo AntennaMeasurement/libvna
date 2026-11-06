@@ -1,6 +1,6 @@
 add_executable(vna_test_version test_version.c)
 set_target_properties(vna_test_version PROPERTIES C_EXTENSIONS OFF)
-target_link_libraries(vna_test_version PRIVATE libvna::vna uv_a)
+target_link_libraries(vna_test_version PRIVATE libvnascpi::vna uv_a)
 target_compile_definitions(vna_test_version PRIVATE
     EXPECTED_VERSION="${PROJECT_VERSION}"
 )
@@ -11,7 +11,7 @@ set_tests_properties(vna.version_and_backend PROPERTIES
 
 add_executable(vna_test_connection test_connection.c)
 set_target_properties(vna_test_connection PROPERTIES C_EXTENSIONS OFF)
-target_link_libraries(vna_test_connection PRIVATE libvna::vna)
+target_link_libraries(vna_test_connection PRIVATE libvnascpi::vna)
 add_test(NAME vna.connection_validation COMMAND vna_test_connection)
 set_tests_properties(vna.connection_validation PROPERTIES
     ENVIRONMENT_MODIFICATION "PATH=path_list_prepend:$<TARGET_FILE_DIR:vna>"
@@ -29,7 +29,7 @@ add_test(NAME vna.installed_package
         -P "${CMAKE_CURRENT_SOURCE_DIR}/check_package.cmake"
 )
 
-if(LIBVNA_BUILD_CLI)
+if(LIBVNASCPI_BUILD_CLI)
     find_package(Python3 REQUIRED COMPONENTS Interpreter)
     add_test(NAME vna.network
         COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/test_network.py"

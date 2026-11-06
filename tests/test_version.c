@@ -8,7 +8,7 @@
 
 #include <uv.h>
 
-#include "libvna/vna.h"
+#include "libvnascpi/vna.h"
 
 int main(void)
 {

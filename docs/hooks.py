@@ -8,9 +8,9 @@ def on_config(config):
     ).strip()
     if re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", version) is None:
         raise ValueError("VERSION must contain a major.minor.patch version")
-    config["extra"]["libvna_version"] = version
+    config["extra"]["libvnascpi_version"] = version
     return config
 
 
 def on_page_markdown(markdown, *, config, **kwargs):
-    return markdown.replace("{{ libvna_version }}", config["extra"]["libvna_version"])
+    return markdown.replace("{{ libvnascpi_version }}", config["extra"]["libvnascpi_version"])

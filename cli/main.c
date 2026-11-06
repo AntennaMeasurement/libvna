@@ -13,7 +13,7 @@
 #include <unistd.h>
 #endif
 
-#include "libvna/vna.h"
+#include "libvnascpi/vna.h"
 
 static void print_usage(FILE *stream)
 {
@@ -540,7 +540,7 @@ int main(int argc, char *argv[])
 
     if (argc == 2 &&
         (strcmp(argv[1], "--version") == 0 || strcmp(argv[1], "-v") == 0)) {
-        printf("libvna %s\n", vna_version());
+        printf("libvnascpi %s\n", vna_version());
         return EXIT_SUCCESS;
     }
 

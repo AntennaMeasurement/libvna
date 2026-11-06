@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "libvna/vna.h"
+#include "libvnascpi/vna.h"
 
 #define CHECK(condition) do { \
     if (!(condition)) { \

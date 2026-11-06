@@ -1,7 +1,7 @@
-#include "libvna/vna.h"
-#include "libvna_version.h"
+#include "libvnascpi/vna.h"
+#include "libvnascpi_version.h"
 
 const char *vna_version(void)
 {
-    return LIBVNA_VERSION;
+    return LIBVNASCPI_VERSION;
 }

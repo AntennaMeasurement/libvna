@@ -1,4 +1,4 @@
-# libvna
+# libvnascpi
 
 A cross-platform C library and CLI for controlling vector network analyzers
 over TCP using SCPI. Numeric IPv4/IPv6 connections, text commands, queries,
@@ -74,7 +74,7 @@ See the [CLI guide](docs/public/cli.md#command-files) for the file format.
 
 | CMake option | Default | Description |
 | --- | --- | --- |
-| `LIBVNA_BUILD_CLI` | `ON` | Build the `vna` executable |
+| `LIBVNASCPI_BUILD_CLI` | `ON` | Build the `vna` executable |
 | `BUILD_SHARED_LIBS` | `OFF` | Build a shared library instead of a static library |
 | `BUILD_TESTING` | `OFF` | Build and register the CTest checks |
 
@@ -99,12 +99,12 @@ certificate verification.
 ## Use in another CMake project
 
 ```cmake
-add_subdirectory(libvna)
-target_link_libraries(my_application PRIVATE libvna::vna)
+add_subdirectory(libvnascpi)
+target_link_libraries(my_application PRIVATE libvnascpi::vna)
 ```
 
 ```c
-#include <libvna/vna.h>
+#include <libvnascpi/vna.h>
 
 const char *version = vna_version();
 
@@ -133,7 +133,7 @@ not overlap. Both source-tree and installed CMake consumption are supported.
 
 ## Layout
 
-- `include/libvna/`: public C headers
+- `include/libvnascpi/`: public C headers
 - `src/`: library implementation
 - `cli/`: command-line entry point
 - `tests/`: version, backend, TCP/SCPI, CLI, and installed-package checks
@@ -161,20 +161,20 @@ cpack --config build-shared/CPackConfig.cmake -C Release -B build-shared/package
 Consumers of an installed SDK can use:
 
 ```cmake
-find_package(libvna CONFIG REQUIRED)
-target_link_libraries(my_application PRIVATE libvna::vna)
+find_package(libvnascpi CONFIG REQUIRED)
+target_link_libraries(my_application PRIVATE libvnascpi::vna)
 ```
 
 Set `CMAKE_PREFIX_PATH` to the installation prefix when needed. The default
-prefix is `%LOCALAPPDATA%\Programs\libvna` on Windows and `$HOME/.local` on
+prefix is `%LOCALAPPDATA%\Programs\libvnascpi` on Windows and `$HOME/.local` on
 Unix. Override it with `CMAKE_INSTALL_PREFIX`. SDKs include libuv's static
 library, development files and notices; static consumers resolve it
 automatically. Shared consumers on Windows need the installed `bin` directory
 on `PATH`.
 
 `VERSION` is the single version source. Public symbol visibility and the
-`vna_status` conventions live in `include/libvna/utility.h`; connection APIs
-live in `include/libvna/connection.h` and are included by the umbrella header.
+`vna_status` conventions live in `include/libvnascpi/utility.h`; connection APIs
+live in `include/libvnascpi/connection.h` and are included by the umbrella header.
 
 ## Documentation and releases
 

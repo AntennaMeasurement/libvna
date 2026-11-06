@@ -1,4 +1,4 @@
-site_name: libvna
+site_name: libvnascpi
 site_description: Cross-platform C library for SCPI vector network analyzers
 site_url: https://antennameasurement.github.io/libvna/
 repo_url: https://github.com/AntennaMeasurement/libvna

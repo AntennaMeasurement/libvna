@@ -9,7 +9,7 @@
 
 #include <uv.h>
 
-#include "libvna/connection.h"
+#include "libvnascpi/connection.h"
 
 struct vna_connection {
     uv_loop_t loop;

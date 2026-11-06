@@ -36,10 +36,10 @@ jobs:
         if: github.event_name == 'release'
         uses: actions/upload-artifact@v4
         with:
-          name: libvna-${{ matrix.os }}-shared-${{ matrix.shared }}
+          name: libvnascpi-${{ matrix.os }}-shared-${{ matrix.shared }}
           path: |
-            build/ci/libvna-*.zip
-            build/ci/libvna-*.tar.gz
+            build/ci/libvnascpi-*.zip
+            build/ci/libvnascpi-*.tar.gz
           if-no-files-found: error
 
   library-only:
@@ -47,7 +47,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Configure without CLI
-        run: cmake -S . -B build/library-only -DBUILD_TESTING=ON -DLIBVNA_BUILD_CLI=OFF
+        run: cmake -S . -B build/library-only -DBUILD_TESTING=ON -DLIBVNASCPI_BUILD_CLI=OFF
       - name: Build and test
         run: |
           cmake --build build/library-only --parallel
@@ -73,7 +73,7 @@ jobs:
     steps:
       - uses: actions/download-artifact@v4
         with:
-          pattern: libvna-*
+          pattern: libvnascpi-*
           path: release-assets
       - name: Give static and shared packages distinct names
         shell: bash

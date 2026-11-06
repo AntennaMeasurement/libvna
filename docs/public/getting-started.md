@@ -18,18 +18,18 @@ For single-configuration generators, also configure with
 | --- | --- | --- |
 | `BUILD_SHARED_LIBS` | `OFF` | Build a shared library instead of a static library |
 | `BUILD_TESTING` | `OFF` | Build/register library, backend, CLI and installed-package tests |
-| `LIBVNA_BUILD_CLI` | `ON` | Build and install the CLI |
+| `LIBVNASCPI_BUILD_CLI` | `ON` | Build and install the CLI |
 
 Tests were previously enabled by default. Existing CMake caches retain their
 chosen value; use `-DBUILD_TESTING=ON` explicitly for development.
 
-Default installation is `%LOCALAPPDATA%\Programs\libvna` on Windows and
+Default installation is `%LOCALAPPDATA%\Programs\libvnascpi` on Windows and
 `$HOME/.local` on Unix. Override it with `-DCMAKE_INSTALL_PREFIX=<directory>`.
 Installation includes the library, public headers, optional CLI, CMake package
 and bundled libuv development files and notices.
 
 The pinned libuv 1.51.0 archive is SHA256-verified and built statically, even
-when libvna is shared. On Unix it is compiled as position-independent code.
+when libvnascpi is shared. On Unix it is compiled as position-independent code.
 For an offline build:
 
 ```sh

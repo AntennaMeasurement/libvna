@@ -3,7 +3,7 @@
 Include the umbrella header:
 
 ```c
-#include <libvna/vna.h>
+#include <libvnascpi/vna.h>
 
 const char *version = vna_version();
 ```
@@ -12,7 +12,7 @@ const char *version = vna_version();
 library-owned string; callers must not free it. The API supports C and C++
 callers and does not expose libuv headers.
 
-`libvna/utility.h` provides `LIBVNA_API` for symbol visibility and the common
+`libvnascpi/utility.h` provides `LIBVNASCPI_API` for symbol visibility and the common
 `vna_status` type:
 
 | Status | Meaning |
@@ -30,7 +30,7 @@ Status-returning APIs leave output parameters unchanged on error.
 
 ## TCP connection and SCPI I/O
 
-These APIs are declared in `libvna/connection.h`, also included by `vna.h`.
+These APIs are declared in `libvnascpi/connection.h`, also included by `vna.h`.
 
 ```c
 vna_connection *vna_connect(const char *ip, unsigned int port, vna_status *status);
@@ -123,11 +123,11 @@ vna_disconnect(device);
 
 The example also requires `<stdio.h>`.
 
-When linking a shared build manually, consumers must define `LIBVNA_SHARED`.
+When linking a shared build manually, consumers must define `LIBVNASCPI_SHARED`.
 The exported CMake target propagates this automatically. Only the library
-build defines `LIBVNA_BUILDING_LIBRARY`.
+build defines `LIBVNASCPI_BUILDING_LIBRARY`.
 
 Implementations belong in module-specific sources under `src`; public
-module headers belong under `include/libvna` and are included by the umbrella
+module headers belong under `include/libvnascpi` and are included by the umbrella
 header when introduced. Version implementation is isolated in `src/version.c`.
 `VERSION` is the single source for the generated version header.

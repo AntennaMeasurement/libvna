@@ -39,7 +39,7 @@ run_checked("${CMAKE_COMMAND}" -S "${SOURCE_DIR}/tests/consumer"
     -B "${test_root}/consumer" ${generator_args}
     "-DCMAKE_PREFIX_PATH=${relocated_prefix}"
     "-DCMAKE_BUILD_TYPE=${CONFIG}"
-    "-DLIBVNA_RUNTIME_DIR=${relocated_prefix}/bin"
+    "-DLIBVNASCPI_RUNTIME_DIR=${relocated_prefix}/bin"
     "-DEXPECTED_VERSION=${EXPECTED_VERSION}")
 run_checked("${CMAKE_COMMAND}" --build "${test_root}/consumer" ${config_args})
 run_checked("${CMAKE_CTEST_COMMAND}" --test-dir "${test_root}/consumer"

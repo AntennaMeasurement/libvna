@@ -1,4 +1,4 @@
-#include <libvna/vna.h>
+#include <libvnascpi/vna.h>
 
 #include <stdio.h>
 #include <stdlib.h>

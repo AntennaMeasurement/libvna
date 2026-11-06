@@ -23,7 +23,7 @@ For a single-configuration Unix build:
 ```
 
 No arguments, `--help`, and `-h` display help. `--version` and `-v` print
-`libvna {{ libvna_version }}`. Success writes to stdout and returns zero.
+`libvnascpi {{ libvnascpi_version }}`. Success writes to stdout and returns zero.
 Unsupported arguments, including extra arguments after a supported option,
 write an error and help to stderr and return a nonzero exit code.
 
@@ -101,4 +101,4 @@ This also applies to the automatic `*OPC?` queries in file mode.
 Network failures/timeouts report an error to stderr, disconnect, and exit
 with a nonzero code. A failed IDN query never enters prompt mode.
 
-Set `LIBVNA_BUILD_CLI=OFF` to build only the library.
+Set `LIBVNASCPI_BUILD_CLI=OFF` to build only the library.

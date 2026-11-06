@@ -1,8 +1,8 @@
-# libvna
+# libvnascpi
 
-Version: **{{ libvna_version }}**
+Version: **{{ libvnascpi_version }}**
 
-libvna is a cross-platform C library and CLI for controlling vector network
+libvnascpi is a cross-platform C library and CLI for controlling vector network
 analyzers over TCP using SCPI. Numeric IPv4/IPv6 connections, text commands,
 queries, and an interactive CLI are supported. Measurement-specific APIs
 are not implemented yet.
